@@ -1,4 +1,4 @@
-create  table scratch.riders.TP_y_variable as
+create  or replace table scratch.riders.TP_y_variable as
 with base as
 (
 select 
@@ -11,17 +11,18 @@ CAST(EXTRACT(HOUR FROM START_OF_PERIOD_LOCAL) AS INT) as hour_of_day
 ,COALESCE(SUM(RIDER_HOURS_WORKED ), 0) AS rider_hours_worked
 ,sum(coalesce(RIDERS_AVAILABLE_IN_HOUR,0)) as riders_available 
 ,sum(coalesce(RET_MINS_SUM,0))as RET_total
-,NULLIFZERO(sum(RET_MINS_SUM) / NULLIFZERO(sum(ORDERS_ASAP))) as RET_AVG
+,COALESCE(SUM(RET_MINS_SUM ), 0) / NULLIF(COALESCE(SUM(ret_mins_cnt ), 0), 0) AS RET_AVG
+
 ,NULLIFZERO(sum(ORDERS_ASAP))/NULLIFZERO(sum(RIDERS_AVAILABLE_IN_HOUR)) as TP_1
 , sum(TOTAL_ORDER_TIME_PHYSICAL_ZONE_HOURS)as TOTAL_ORDER_TIME_PHYSICAL_ZONE_HOURS
 ,sum(TOTAL_TIME_PHYSICAL_ZONE_HOURS)as TOTAL_TIME_PHYSICAL_ZONE_HOURS
 ,NULLIFZERO(sum(RIDER_HOURS_ON_ORDERS_DHW_SUM))/ NULLIFZERO(sum(RIDER_HOURS_WORKED)) as Utilisation_rate_1
-,NULLIFZERO(sum(TOTAL_ORDER_TIME_PHYSICAL_ZONE_HOURS))/NULLIFZERO(sum(TOTAL_TIME_PHYSICAL_ZONE_HOURS )) as UR_zone_corrected
+,coalesce(sum(TOTAL_ORDER_TIME_PHYSICAL_ZONE_HOURS),0)/NULLIF(COALESCE(sum(TOTAL_TIME_PHYSICAL_ZONE_HOURS ),0),0) as UR_zone_corrected
 from
 PRODUCTION.AGGREGATE.AGG_ZONE_DELIVERY_METRICS_HOURLY
 where
 date (start_of_period_local) between   '2023-03-01' and '2024-04-30'
-and CNT_ERAT >0 -- use this filter to get only active zone
+ and CNT_ERAT >0 -- use this filter to get only active zone
 group by 1,2,3,4
 )
 ,TP_calc as
@@ -41,9 +42,3 @@ TP_calc as b
  and lower(a.city_name)=lower(b.city_name)
  and a.order_month=b.order_month
  and a.hour_of_day=b.hour_of_day;
- 
-
-
-
-    
-
